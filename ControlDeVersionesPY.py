@@ -8,7 +8,7 @@ def salvarVersión(nombre_archivo, numero_version):
     nombre_archivo_limpio = re.sub(r"commit_|_\d+$", "", nombre_archivo)
     versionPath = os.path.join(carpeta , f"commit_{nombre_archivo_limpio}_{numero_version}.py")
     ruta_destino = os.path.join(carpeta, f"{nombre_archivo}.py")
-# Prueba de que se está guardando el archivo
+
     with open(versionPath, "w") as file:
         file.write(f"# Nombre del archivo: {nombre_archivo_limpio}\n")
         file.write(f"# Numero de la versión: {numero_version}\n")
