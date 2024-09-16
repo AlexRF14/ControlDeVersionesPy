@@ -1,6 +1,8 @@
 import os
 import shutil
 import re
+import tkinter as tk
+from tkinter import messagebox
 
 # Función para salvar versión como .py
 def salvarVersión(nombre_archivo, numero_version):
@@ -41,11 +43,14 @@ def CopiarArchivo(nombre_archivo , nuevo_nombre):
         print("Error: Extensión no soportada.")
         return
 
-    # Permite dejar o modificar el nombre de la copia del archivo
     if nuevo_nombre:
-        ruta_destino = os.path.join(carpeta_destino, f"{nuevo_nombre}{extension}")
+        # Si el nuevo nombre ya tiene una extensión, no agregamos otra
+        if os.path.splitext(nuevo_nombre)[1]:
+            ruta_destino = os.path.join(carpeta_destino, nuevo_nombre)
+        else:
+            ruta_destino = os.path.join(carpeta_destino, f"{nuevo_nombre}{extension}")
     else:
-        ruta_destino = os.path.join(carpeta_destino, f"{nombre_archivo}{extension}")
+        ruta_destino = os.path.join(carpeta_destino, nombre_archivo)
 
     try:
         # Copiar archivo a la carpeta RutaDondeGuardarLasCosas
@@ -55,7 +60,6 @@ def CopiarArchivo(nombre_archivo , nuevo_nombre):
         print("Error: El archivo que intentas copiar no existe.")
     except Exception as e:
         print(f"Error al copiar el archivo: {e}")
-
 # Visualizar los archivos de una carpeta
 def visualizacionArchivos():
     carpeta = "C:/Users/Usuario/Desktop/PythoonPruebas/PythonControlDeVersión/RutaDondeGuardarLasCosas"
@@ -99,46 +103,68 @@ def eliminarArchivo(nombre_archivo):
         print("Error: No tienes permiso para eliminar el archivo.")
     except Exception as e:
         print(f"Error inesperado: {e}")
-        
+
 def main():
-    while True:
-        print("\nSistema de control de versiones")
-        print("1. Hacer un commit")
-        print("2. Copiar archivo ya existente")
-        print("3. Visualizar los archivos")
-        print("4. Eliminar archivos y commits")
-        print("5. Salir")
-        opcion = input("Seleccione una opción: ")
+    ventana = tk.Tk()
+    ventana.title("Sistema de Control de Versiones")
+    ventana.geometry("800x600")
 
-        if opcion == "1":
-            nombre_archivo = input("Ingrese el nombre del archivo: ")
-            numero_version = input("Ingrese el nuevo número de la versión: ")
-            carpeta_destino = "C:/Users/Usuario/Desktop/PythoonPruebas/PythonControlDeVersión/RutaDondeGuardarLasCosas"
-            comparador_de_replicados = os.path.join(carpeta_destino , f"commit_{os.path.splitext(nombre_archivo)[0]}.py")
-            
-            if not os.path.exists(comparador_de_replicados):
-                salvarVersión(nombre_archivo, numero_version)
-            else:
-                print(f"Nombre: {nombre_archivo} y versión: {numero_version} ya utilizados o no encontrados")
-                
-        elif opcion == "2":
-            nombreArchivo = input("Ingrese el nombre del archivo que desea copiar: ")
-            nuevo_nombre = input("Por si quieres modificar su nombre: ")
-            CopiarArchivo(nombreArchivo , nuevo_nombre)
-            
-        elif opcion == "3":
-            visualizacionArchivos()
-            
-        elif opcion == "4":
-            nombre_archivo = input("Como se llama el archivo que quieres eliminar, incluya .py o .txt: ")
-            eliminarArchivo(nombre_archivo)
-            
-        elif opcion == "5":
-            print("Saliendo del programa...")
-            break
+    # Título
+    tk.Label(ventana, text="Sistema de Control de Versiones", font=("Arial", 26)).pack(pady=10)
 
-        else:
-            print("Opción no válida")
+    # Botones de acciones
+    tk.Button(ventana, text="Hacer un commit",font = ("Arial", 16),command=hacer_commit).pack(pady=20)
+    tk.Button(ventana, text="Copiar archivo", font = ("Arial", 16), command=copiar_archivo).pack(pady=20)
+    tk.Button(ventana, text="Visualizar archivos", font = ("Arial", 16) ,command=visualizacionArchivos).pack(pady=20)
+    tk.Button(ventana, text="Eliminar archivo", font = ("Arial", 16) ,command=eliminar_archivo_interfaz).pack(pady=20)
+    tk.Button(ventana, text="Salir", font = ("Arial", 16) ,command=ventana.quit).pack(pady=20)
+
+    ventana.mainloop()
+
+# Ventana para hacer commit
+def hacer_commit():
+    commit_ventana = tk.Toplevel()
+    commit_ventana.title("Hacer un Commit")
+    commit_ventana.geometry("400x270")
+
+    tk.Label(commit_ventana, text="Nombre del archivo" , font=("Arial" , 16)).pack(pady=5)
+    nombre_archivo = tk.Entry(commit_ventana , width = 50)
+    nombre_archivo.pack(pady=10)
+
+    tk.Label(commit_ventana, text="Número de la versión", font=("Arial" , 16)).pack(pady=5)
+    numero_version = tk.Entry(commit_ventana, width= 5)
+    numero_version.pack(pady=10)
+
+    tk.Button(commit_ventana, text="Guardar Commit" ,font=("Arial" , 15) , command=lambda: salvarVersión(nombre_archivo.get(), numero_version.get())).pack(pady=40)
+
+# Ventana para copiar archivo
+def copiar_archivo():
+    copiar_ventana = tk.Toplevel()
+    copiar_ventana.title("Copiar Archivo")
+    copiar_ventana.geometry("400x250")
+
+    tk.Label(copiar_ventana, text="Nombre del archivo", font=("Arial" , 16)).pack(pady=5)
+    nombre_archivo = tk.Entry(copiar_ventana, width=50)
+    nombre_archivo.pack(pady=10)
+
+    tk.Label(copiar_ventana, text="Nuevo nombre (opcional)", font=("Arial" , 16)).pack(pady=5)
+    nuevo_nombre = tk.Entry(copiar_ventana, width=50)
+    nuevo_nombre.pack(pady=10)
+
+    tk.Button(copiar_ventana, text="Copiar" , font=("Arial" , 15), command=lambda: CopiarArchivo(nombre_archivo.get(), nuevo_nombre.get())).pack(pady=10)
+
+# Ventana para eliminar archivo
+def eliminar_archivo_interfaz():
+    eliminar_ventana = tk.Toplevel()
+    eliminar_ventana.title("Eliminar Archivo")
+    eliminar_ventana.geometry("400x150")
+
+    tk.Label(eliminar_ventana, text="Nombre del archivo", font=("Arial" , 16)).pack(pady=5)
+    nombre_archivo = tk.Entry(eliminar_ventana, width=50)
+    nombre_archivo.pack(pady=10)
+
+    tk.Button(eliminar_ventana, text="Eliminar", font=("Arial" , 15), command=lambda: eliminarArchivo(nombre_archivo.get())).pack(pady=10)
+
 
 if __name__ == "__main__":
     main()
