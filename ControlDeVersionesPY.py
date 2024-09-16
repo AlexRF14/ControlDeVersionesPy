@@ -4,7 +4,7 @@ import re
 import tkinter as tk
 from tkinter import messagebox
 
-# Función para salvar versión como .py
+# Función para hacer commit
 def salvarVersión(nombre_archivo, numero_version):
     carpeta = "C:/Users/Usuario/Desktop/PythoonPruebas/PythonControlDeVersión/RutaDondeGuardarLasCosas"
     extension = os.path.splitext(nombre_archivo)[1]
