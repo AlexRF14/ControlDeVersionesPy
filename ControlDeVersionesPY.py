@@ -1,109 +1,120 @@
 import os
 import shutil
-import re
-import tkinter as tk
+import mysql.connector
 from tkinter import messagebox
+import tkinter as tk
 
-# Función para salvar versión como .py
-def salvarVersión(nombre_archivo, numero_version):
-    carpeta = "C:/Users/Usuario/Desktop/PythoonPruebas/PythonControlDeVersión/RutaDondeGuardarLasCosas"
-    extension = os.path.splitext(nombre_archivo)[1]
-    nombre_archivo_limpio = re.sub(r"commit_|_\d+$", "", os.path.splitext(nombre_archivo)[0])
-
-    if extension in [".py", ".java", ".txt", ".docx"]:
-        versionPath = os.path.join(carpeta, f"commit_{nombre_archivo_limpio}_{numero_version}{extension}")
-        ruta_destino = os.path.join(carpeta, f"{nombre_archivo_limpio}{extension}")
-    else:
-        print("Error: Extensión no soportada.")
-        return
-
+# Función para conectar a la base de datos
+def conectar_base_datos(nombre_usuario , nombre_contrasena):
     try:
-        shutil.copy(ruta_destino, versionPath)
-        with open(versionPath, "a") as file:
-            file.write(f"# Nombre del archivo: {nombre_archivo_limpio}\n")
-            file.write(f"# Numero de la versión: {numero_version}\n")
-            file.write("\n")
-        print(f"Commit guardada en {versionPath}")
-    except FileNotFoundError:
-        print("Error: El archivo que intentas guardar no existe.")
+        conexion = mysql.connector.connect(
+            host= f"localhost",
+            user=f"{nombre_usuario}",
+            password=f"{nombre_contrasena}",
+            database="control_versiones"
+        )
+        return conexion
+    except mysql.connector.Error as err:
+        print(f"Error: {err}")
+        return None
+    # Función para iniciar sesion y abrir la ventana de opciones y cerrar la primera
+def iniciar_sesion(nombre_usuario, nombre_contrasena, ventana_main):
+    conexion_exitosa = conectar_base_datos(nombre_usuario, nombre_contrasena)
+    if conexion_exitosa:
+        print("Conexión exitosa. Iniciando opciones...")
+        ventana_main.destroy()  # Cierra la ventana principal
+        opciones()  # Si la conexión es exitosa, muestra las opciones
+    else:
+        print("Error: Usuario o contraseña incorrectos.")
+        messagebox.showerror("Error", "Usuario o contraseña incorrectos.")
+
+# Guardar archivo en la base de datos
+def guardar_archivo(nombre_archivo, tipo, contenido_binario):
+    conexion = conectar_base_datos()
+    if conexion is None:
+        return
+    cursor = conexion.cursor()
+    query = "INSERT INTO documentos (nombre, tipo, contenido) VALUES (%s, %s, %s)"
+    try:
+        cursor.execute(query, (nombre_archivo, tipo, contenido_binario))
+        conexion.commit()
+        print(f"Archivo {nombre_archivo} guardado en la base de datos.")
     except Exception as e:
-        print(f"Error al copiar el archivo: {e}")
+        print(f"Error al guardar el archivo: {e}")
+    finally:
+        conexion.close()
+
+# Guardar una versión del archivo en la base de datos
+def salvar_version_mysql(nombre_archivo, numero_version, contenido):
+    conexion = conectar_base_datos()
+    if conexion is None:
+        return
+    cursor = conexion.cursor()
+    try:
+        query_documento = "SELECT id FROM documentos WHERE nombre = %s"
+        cursor.execute(query_documento, (nombre_archivo,))
+        documento_id = cursor.fetchone()
         
-# Copia un archivo existente de la carpeta PythoonPruebas
-def CopiarArchivo(nombre_archivo , nuevo_nombre):
-    carpeta_destino = "C:/Users/Usuario/Desktop/PythoonPruebas/PythonControlDeVersión/RutaDondeGuardarLasCosas"
-    carpeta_origen = "C:/Users/Usuario/Desktop/PythoonPruebas"
-    
-    extension = os.path.splitext(nombre_archivo)[1]
-    ruta_origen = os.path.join(carpeta_origen, f"{nombre_archivo}")
-    
-    if extension in [".py", ".java", ".txt", ".docx"]:
-        ruta_destino = os.path.join(carpeta_destino, f"{nombre_archivo}")
-    else:
-        print("Error: Extensión no soportada.")
-        return
-
-    if nuevo_nombre:
-        # Si el nuevo nombre ya tiene una extensión, no agregamos otra
-        if os.path.splitext(nuevo_nombre)[1]:
-            ruta_destino = os.path.join(carpeta_destino, nuevo_nombre)
+        if documento_id:
+            query = "INSERT INTO versiones (documento_id, version, contenido) VALUES (%s, %s, %s)"
+            cursor.execute(query, (documento_id[0], numero_version, contenido))
+            conexion.commit()
+            print(f"Commit guardado como versión {numero_version}")
         else:
-            ruta_destino = os.path.join(carpeta_destino, f"{nuevo_nombre}{extension}")
-    else:
-        ruta_destino = os.path.join(carpeta_destino, nombre_archivo)
-
-    try:
-        # Copiar archivo a la carpeta RutaDondeGuardarLasCosas
-        shutil.copy(ruta_origen, ruta_destino)
-        print(f"Archivo copiado exitosamente a {ruta_destino}")
-    except FileNotFoundError:
-        print("Error: El archivo que intentas copiar no existe.")
+            print("Error: No se encontró el archivo.")
     except Exception as e:
-        print(f"Error al copiar el archivo: {e}")
-# Visualizar los archivos de una carpeta
-def visualizacionArchivos():
-    carpeta = "C:/Users/Usuario/Desktop/PythoonPruebas/PythonControlDeVersión/RutaDondeGuardarLasCosas"
-    if os.path.exists(carpeta):
-        archivos = os.listdir(carpeta)
-        if archivos:
-            print("Archivos en la carpeta: ")
-            for archivo in archivos:
-                print(archivo)
-        else:
-            print("La carpeta está vacía.")
-    else:
-        print(f"Error: La carpeta {carpeta} no existe")
+        print(f"Error al guardar la versión: {e}")
+    finally:
+        conexion.close()
 
-# Eliminar archivo
-def eliminarArchivo(nombre_archivo):
-    carpeta = "C:/Users/Usuario/Desktop/PythoonPruebas/PythonControlDeVersión/RutaDondeGuardarLasCosas"
-    extension = os.path.splitext(nombre_archivo)[1]
-
-    if not extension:
-        print("Error: Debes incluir la extensión del archivo.")
-        return
-
-    # Verifica que la extensión sea válida
-    if extension not in [".py", ".java", ".txt", ".docx"]:
-        print("Error: Extensión no soportada.")
-        return
-
-    versionPath = os.path.join(carpeta, f"{nombre_archivo}")
-
+# Leer el contenido de un archivo en formato binario
+def leer_contenido_archivo(nombre_archivo):
     try:
-        # Verifica si el archivo existe y lo elimina
-        if os.path.exists(versionPath):
-            os.remove(versionPath)
-            print(f"Archivo {nombre_archivo} eliminado")
-        else:
-            print(f"Archivo no encontrado en la dirección {carpeta}")
-    except FileNotFoundError:
-        print("Error: El archivo que intentas eliminar no existe.")
-    except PermissionError:
-        print("Error: No tienes permiso para eliminar el archivo.")
+        with open(nombre_archivo, "rb") as archivo:
+            return archivo.read()
     except Exception as e:
-        print(f"Error inesperado: {e}")
+        print(f"Error al leer el archivo: {e}")
+        return None
 
+# Descargar archivo desde la base de datos
+def cargar_archivo(nombre_archivo):
+    conexion = conectar_base_datos()
+    if conexion is None:
+        return
+    cursor = conexion.cursor()
+    query = "SELECT contenido, tipo FROM documentos WHERE nombre = %s"
+    cursor.execute(query, (nombre_archivo,))
+    archivo = cursor.fetchone()
+    
+    if archivo:
+        contenido_binario, tipo = archivo
+        with open(f"{nombre_archivo}{tipo}", "wb") as file:
+            file.write(contenido_binario)
+        print(f"Archivo {nombre_archivo}{tipo} descargado.")
+    else:
+        print("Error: Archivo no encontrado.")
+    conexion.close()
+
+# Eliminar un archivo en la base de datos
+def eliminar_archivo_mysql(nombre_archivo):
+    conexion = conectar_base_datos()
+    if conexion is None:
+        return
+    cursor = conexion.cursor()
+    query = "DELETE FROM documentos WHERE nombre = %s"
+    try:
+        cursor.execute(query, (nombre_archivo,))
+        conexion.commit()
+        if cursor.rowcount > 0:
+            print(f"Archivo {nombre_archivo} eliminado de la base de datos.")
+        else:
+            print("Error: El archivo no existe en la base de datos.")
+    except Exception as e:
+        print(f"Error al eliminar el archivo: {e}")
+    finally:
+        conexion.close()
+
+# Interfaz gráfica principal
 def main():
     ventana = tk.Tk()
     ventana.title("Sistema de Control de Versiones")
@@ -111,15 +122,33 @@ def main():
 
     # Título
     tk.Label(ventana, text="Sistema de Control de Versiones", font=("Arial", 26)).pack(pady=10)
-
-    # Botones de acciones
-    tk.Button(ventana, text="Hacer un commit",font = ("Arial", 16),command=hacer_commit).pack(pady=20)
-    tk.Button(ventana, text="Copiar archivo", font = ("Arial", 16), command=copiar_archivo).pack(pady=20)
-    tk.Button(ventana, text="Visualizar archivos", font = ("Arial", 16) ,command=visualizacionArchivos).pack(pady=20)
-    tk.Button(ventana, text="Eliminar archivo", font = ("Arial", 16) ,command=eliminar_archivo_interfaz).pack(pady=20)
-    tk.Button(ventana, text="Salir", font = ("Arial", 16) ,command=ventana.quit).pack(pady=20)
+    tk.Label(ventana, text="Nombre de usuario", font=("Arial", 16)).pack(pady=5)
+    nombre_usuario = tk.Entry(ventana, width=50)
+    nombre_usuario.pack(pady=10)
+    tk.Label(ventana, text="Contraseña", font=("Arial", 16)).pack(pady=5)
+    nombre_contrasena = tk.Entry(ventana, width=50, show="*")  # Oculta la contraseña
+    nombre_contrasena.pack(pady=10)
+    
+    tk.Button(ventana, text="Iniciar Sesión", font=("Arial", 15), 
+              command=lambda: iniciar_sesion(nombre_usuario.get(), nombre_contrasena.get(), ventana)).pack(pady=40)
 
     ventana.mainloop()
+
+# Botones de opciones y nueva ventana Main
+def opciones():   
+    ventana_opciones = tk.Tk()
+    ventana_opciones.title("Opciones")
+    ventana_opciones.geometry("800x600")
+    
+    tk.Label(ventana_opciones, text="OPCIONES", font=("Arial", 26)).pack(pady=10)
+    tk.Button(ventana_opciones, text="Hacer un commit", font=("Arial", 16), command=hacer_commit).pack(pady=20)
+    tk.Button(ventana_opciones, text="Copiar archivo", font=("Arial", 16), command=copiar_archivo).pack(pady=20)
+    tk.Button(ventana_opciones, text="Visualizar archivos", font=("Arial", 16), command=visualizacion_archivos).pack(pady=20)
+    tk.Button(ventana_opciones, text="Eliminar archivo", font=("Arial", 16), command=eliminar_archivo_interfaz).pack(pady=20)
+    tk.Button(ventana_opciones, text="Salir", font=("Arial", 16), command=ventana_opciones.quit).pack(pady=20)
+
+    ventana_opciones.mainloop()
+    
 
 # Ventana para hacer commit
 def hacer_commit():
@@ -127,31 +156,39 @@ def hacer_commit():
     commit_ventana.title("Hacer un Commit")
     commit_ventana.geometry("400x270")
 
-    tk.Label(commit_ventana, text="Nombre del archivo" , font=("Arial" , 16)).pack(pady=5)
-    nombre_archivo = tk.Entry(commit_ventana , width = 50)
+    tk.Label(commit_ventana, text="Nombre del archivo", font=("Arial", 16)).pack(pady=5)
+    nombre_archivo = tk.Entry(commit_ventana, width=50)
     nombre_archivo.pack(pady=10)
 
-    tk.Label(commit_ventana, text="Número de la versión", font=("Arial" , 16)).pack(pady=5)
-    numero_version = tk.Entry(commit_ventana, width= 5)
+    tk.Label(commit_ventana, text="Número de la versión", font=("Arial", 16)).pack(pady=5)
+    numero_version = tk.Entry(commit_ventana, width=5)
     numero_version.pack(pady=10)
 
-    tk.Button(commit_ventana, text="Guardar Commit" ,font=("Arial" , 15) , command=lambda: salvarVersión(nombre_archivo.get(), numero_version.get())).pack(pady=40)
+    tk.Button(commit_ventana, text="Guardar Commit", font=("Arial", 15), 
+              command=lambda: salvar_version_mysql(nombre_archivo.get(), numero_version.get(), leer_contenido_archivo(nombre_archivo.get()))).pack(pady=40)
 
-# Ventana para copiar archivo
+# Ventana para copiar archivo (no implementada en MySQL, solo local)
 def copiar_archivo():
-    copiar_ventana = tk.Toplevel()
-    copiar_ventana.title("Copiar Archivo")
-    copiar_ventana.geometry("400x250")
+    pass
 
-    tk.Label(copiar_ventana, text="Nombre del archivo", font=("Arial" , 16)).pack(pady=5)
-    nombre_archivo = tk.Entry(copiar_ventana, width=50)
-    nombre_archivo.pack(pady=10)
-
-    tk.Label(copiar_ventana, text="Nuevo nombre (opcional)", font=("Arial" , 16)).pack(pady=5)
-    nuevo_nombre = tk.Entry(copiar_ventana, width=50)
-    nuevo_nombre.pack(pady=10)
-
-    tk.Button(copiar_ventana, text="Copiar" , font=("Arial" , 15), command=lambda: CopiarArchivo(nombre_archivo.get(), nuevo_nombre.get())).pack(pady=10)
+# Visualización de archivos desde la base de datos (lista de documentos)
+def visualizacion_archivos():
+    conexion = conectar_base_datos()
+    if conexion is None:
+        return
+    cursor = conexion.cursor()
+    query = "SELECT nombre, tipo FROM documentos"
+    cursor.execute(query)
+    archivos = cursor.fetchall()
+    
+    if archivos:
+        print("Archivos en la base de datos:")
+        for archivo in archivos:
+            nombre, tipo = archivo
+            print(f"{nombre}{tipo}")
+    else:
+        print("No hay archivos en la base de datos.")
+    conexion.close()
 
 # Ventana para eliminar archivo
 def eliminar_archivo_interfaz():
@@ -159,11 +196,12 @@ def eliminar_archivo_interfaz():
     eliminar_ventana.title("Eliminar Archivo")
     eliminar_ventana.geometry("400x150")
 
-    tk.Label(eliminar_ventana, text="Nombre del archivo", font=("Arial" , 16)).pack(pady=5)
+    tk.Label(eliminar_ventana, text="Nombre del archivo", font=("Arial", 16)).pack(pady=5)
     nombre_archivo = tk.Entry(eliminar_ventana, width=50)
     nombre_archivo.pack(pady=10)
 
-    tk.Button(eliminar_ventana, text="Eliminar", font=("Arial" , 15), command=lambda: eliminarArchivo(nombre_archivo.get())).pack(pady=10)
+    tk.Button(eliminar_ventana, text="Eliminar", font=("Arial", 15), 
+              command=lambda: eliminar_archivo_mysql(nombre_archivo.get())).pack(pady=10)
 
 
 if __name__ == "__main__":
